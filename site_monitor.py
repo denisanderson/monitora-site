@@ -1,58 +1,96 @@
 #!/usr/bin/env python
- 
-import os, sys, requests, smtplib
-from time import sleep
-from decouple import config
+
+# TODO: [ ] Cria função para preparar a mensagem de email
+# TODO: [ ] Implementa logging
+# TODO: [ ] Obtem lista de URL de arquivo
+# TODO: [ ] Obtem lista de destinatários do email de arquivo
+# TODO: [ ] Implementa chamada main()
+# TODO: [ ] Obtem nome dos arquivos de URL e destinários do email na linha de comando
+# TODO: [ ] Envia email com o trace da exceção nas falhas
+# TODO: [ ] Inclui bloco Try/Except na rotina de envio de email
+
+import smtplib
+import sys
 from datetime import datetime
-from email.mime.text import MIMEText
+from email.message import EmailMessage
+from time import sleep
 
-# ler informações a partir de arquivo .env localizado no mesmo dir do script
-try:
-    EMAIL_ADDRESS = config('EMAIL_ADDR')
-    EMAIL_PASS = config('EMAIL_PASSWD')
-except Exception as e:
-    print(f'[x] Falha: {e}')
-    sys.exit(1) # aborta a execução do script se não conseguir obter as credenciais
+import decouple
+import requests
 
-DEBUG_LEVEL = 0 # 0: Off / 1: On
 
-# TODO: ler a partir de arquivo os destinatarios do email
-EMAIL_RCPT = "denisranderson@gmail.com"
+def get_data_hora():
+    now = datetime.now()
+    return now.strftime("%d/%m/%Y %H:%M:%S")
 
-now = datetime.now()
-data_hora_execucao = now.strftime("%d/%m/%Y %H:%M:%S")
 
-def envia_email(user_email, user_passwd, recipients, msg):
-    SMTP_SERVER_NAME = 'smtp.gmail.com'
-    SMTP_SERVER_PORT = 465
+def envia_email(msg_contents):
+    try:
+        # Tenta obter credenciais a partir de arquivo .env
+        EMAIL_ADDRESS = decouple.config('EMAIL_ADDR')
+        EMAIL_PASSWORD = decouple.config('EMAIL_PASSWD')
 
-    server = smtplib.SMTP_SSL(SMTP_SERVER_NAME, SMTP_SERVER_PORT)
-    server.ehlo()
-    server.login(user_email, user_passwd)
-    server.set_debuglevel(DEBUG_LEVEL)
+    except decouple.UndefinedValueError as value_ex:
+        print(f'{get_data_hora()}, {value_ex}')  # log
+        sys.exit(1)
 
-    print(f'[OK] Enviando email para: {recipients}')
-    server.sendmail(user_email, recipients, msg)
+    except Exception as ex:
+        print(f'{get_data_hora()}, {repr(ex)}')  # log
+        raise
 
-    server.close()
-    print(f'[OK] {data_hora_execucao}, Email enviado')
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.send_message(msg_contents)
+        print(f'{get_data_hora()}, email enviado')  # log
 
-# TODO: gerar log da execução do script
-def log():
+
+def verifica_status_url(url, tentativas=5):
+    TEMPO_SLEEP = 2
+    mensagem = ''
+    sem_resposta_ok = False
+
+    for _ in range(0, tentativas):
+        try:
+            requisicao = requests.get(url, timeout=5)
+
+        except requests.exceptions.ConnectionError as conn_ex:
+            mensagem = f'{get_data_hora()}, {conn_ex}'
+            print(mensagem)  # log
+            sys.exit(1)
+
+        else:
+            if requisicao.status_code != 200:
+                sem_resposta_ok = True
+                mensagem = mensagem + \
+                    f'{get_data_hora()}, {url}, {requisicao.status_code}, {requests.status_codes._codes[requisicao.status_code][0]}\n'
+                sleep(TEMPO_SLEEP)
+
+            else:
+                sem_resposta_ok = False
+                mensagem = f'{get_data_hora()}, {url}, {requisicao.status_code}, {requests.status_codes._codes[requisicao.status_code][0]}'
+                break
+
+    return sem_resposta_ok, mensagem
+
+
+def prepara_msg():
     pass
 
-print(f'[OK] {data_hora_execucao}, Processamento iniciado')
 
-# TODO: ler de arquivo as urls a monitorar
-url_monitorada = 'https://www.uol.com.br/'
+url_monitorada = 'https://www.uol1.com.br'
 
-# TODO: corrigir problema que o destinatario da msg vai no campo CCo
-MSG_BODY = MIMEText('{}\nServidor {} não respondeu.'.format(data_hora_execucao, url_monitorada))
-MSG_BODY['Subject'] = 'Falha: {}'.format(url_monitorada)
-MSG_BODY['From'] = 'Monitora Site Test Script'
+url_monitorada_fora, mensagem_verificacao = verifica_status_url(url_monitorada)
 
-try:
-    # TODO: testar se url responde em 5 tentativas a cada 1 seg
-    envia_email(EMAIL_ADDRESS, EMAIL_PASS, EMAIL_RCPT, MSG_BODY.as_string())
-except Exception as e:
-    print('[x] Falha: {}'.format(e))
+if url_monitorada_fora:
+    email_recipients = "denisranderson@gmail.com"
+
+    msg = EmailMessage()
+    msg['Subject'] = f'Sem resposta: {url_monitorada}'
+    msg['From'] = 'Monitor de URL'
+    msg['To'] = email_recipients
+    msg.set_content(mensagem_verificacao)
+
+    # prepara_msg()
+    envia_email(msg)
+else:
+    print(mensagem_verificacao)  # log
