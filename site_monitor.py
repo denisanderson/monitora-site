@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 # TODO: [ ] Cria função para preparar a mensagem de email
-# TODO: [ ] Implementa logging
 # TODO: [ ] Obtem lista de URL de arquivo
 # TODO: [ ] Obtem lista de destinatários do email de arquivo
 # TODO: [ ] Implementa chamada main()
@@ -9,9 +8,9 @@
 # TODO: [ ] Envia email com o trace da exceção nas falhas
 # TODO: [ ] Inclui bloco Try/Except na rotina de envio de email
 
+import logging
 import smtplib
 import sys
-import logging
 from datetime import datetime
 from email.message import EmailMessage
 from time import sleep
@@ -19,20 +18,22 @@ from time import sleep
 import decouple
 import requests
 
+def configura_logger():
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+    log_formatter = logging.Formatter('%(asctime)s,%(levelname)s,%(message)s')
 
-log_formatter = logging.Formatter('%(asctime)s,%(levelname)s,%(message)s')
+    log_file_handler = logging.FileHandler('site_monitor.log')
+    log_file_handler.setFormatter(log_formatter)
 
-log_file_handler = logging.FileHandler('site_monitor.log')
-log_file_handler.setFormatter(log_formatter)
+    log_stream_handler = logging.StreamHandler()
+    log_stream_handler.setFormatter(log_formatter)
 
-log_stream_handler = logging.StreamHandler()
-log_stream_handler.setFormatter(log_formatter)
+    logger.addHandler(log_file_handler)
+    # logger.addHandler(log_stream_handler) # Mostra log na tela
 
-logger.addHandler(log_file_handler)
-#logger.addHandler(log_stream_handler)
+    return logger
 
 
 def get_data_hora():
@@ -47,7 +48,7 @@ def envia_email(msg_contents):
         EMAIL_PASSWORD = decouple.config('EMAIL_PASSWD')
 
     except decouple.UndefinedValueError as value_ex:
-        logger.critical(f'{value_ex}') 
+        logger.critical(f'{value_ex}')
         sys.exit(1)
 
     except Exception as ex:
@@ -78,7 +79,8 @@ def verifica_status_url(url, tentativas=5):
                 sem_resposta = True
                 mensagem = mensagem + \
                     f'{get_data_hora()}, {url}, {requisicao.status_code}, {requests.status_codes._codes[requisicao.status_code][0]}\n'
-                logger.error(f'{url},{requisicao.status_code},{requests.status_codes._codes[requisicao.status_code][0]}')
+                logger.error(
+                    f'{url},{requisicao.status_code},{requests.status_codes._codes[requisicao.status_code][0]}')
                 sleep(TEMPO_SLEEP)
 
             else:
@@ -93,20 +95,27 @@ def prepara_msg():
     pass
 
 
-url_monitorada = 'https://www.uol.com.br'
+def main():
+    
+    url_monitorada = 'https://www.uol.com.br/1'
 
-url_monitorada_fora, mensagem = verifica_status_url(url_monitorada)
+    url_monitorada_fora, mensagem = verifica_status_url(url_monitorada)
 
-if url_monitorada_fora:
-    email_recipients = "denisranderson@gmail.com"
+    if url_monitorada_fora:
+        email_recipients = "denisranderson@gmail.com"
 
-    msg = EmailMessage()
-    msg['Subject'] = f'Sem resposta: {url_monitorada}'
-    msg['From'] = 'Monitor de URL'
-    msg['To'] = email_recipients
-    msg.set_content(mensagem)
+        msg = EmailMessage()
+        msg['Subject'] = f'Sem resposta: {url_monitorada}'
+        msg['From'] = 'Monitor de URL'
+        msg['To'] = email_recipients
+        msg.set_content(mensagem)
 
-    # prepara_msg()
-    envia_email(msg)
-else:
-    logger.info(mensagem)
+        # prepara_msg()
+        envia_email(msg)
+    else:
+        logger.info(mensagem)
+
+
+if __name__== "__main__":
+    logger = configura_logger()
+    main()
