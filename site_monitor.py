@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
-# TODO: [ ] Cria função para preparar a mensagem de email
-# TODO: [ ] Obtem lista de URL de arquivo
-# TODO: [ ] Obtem lista de destinatários do email de arquivo
-# TODO: [ ] Implementa chamada main()
-# TODO: [ ] Obtem nome dos arquivos de URL e destinários do email na linha de comando
-# TODO: [ ] Envia email com o trace da exceção nas falhas
-# TODO: [ ] Inclui bloco Try/Except na rotina de envio de email
+# TODO: Obtem lista de URL de arquivo
+# TODO: Obtem lista de destinatários do email de arquivo
+# TODO: Obtem nome dos arquivos de URL e destinários do email na linha de comando
+# TODO: Envia email com o trace da exceção nas falhas
+# TODO: Inclui bloco Try/Except na rotina de envio de email
 
 import logging
 import smtplib
@@ -17,6 +15,7 @@ from time import sleep
 
 import decouple
 import requests
+
 
 def configura_logger():
     logger = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ def configura_logger():
     log_stream_handler.setFormatter(log_formatter)
 
     logger.addHandler(log_file_handler)
-    # logger.addHandler(log_stream_handler) # Mostra log na tela
+    logger.addHandler(log_stream_handler)  # Mostra log na tela
 
     return logger
 
@@ -62,7 +61,7 @@ def envia_email(msg_contents):
 
 
 def verifica_status_url(url, tentativas=5):
-    TEMPO_SLEEP = 2
+    TEMPO_SLEEP = 3
     mensagem = ''
     sem_resposta = False
 
@@ -91,31 +90,30 @@ def verifica_status_url(url, tentativas=5):
     return sem_resposta, mensagem
 
 
-def prepara_msg():
-    pass
+def prepara_msg(url, corpo_email):
+    email_recipients = "denisranderson@gmail.com"
+
+    msg = EmailMessage()
+    msg['Subject'] = f'Sem resposta: {url}'
+    msg['From'] = 'Monitor de URL'
+    msg['To'] = email_recipients
+    msg.set_content(corpo_email)
+
+    return msg
 
 
 def main():
-    
     url_monitorada = 'https://www.uol.com.br/1'
 
     url_monitorada_fora, mensagem = verifica_status_url(url_monitorada)
 
     if url_monitorada_fora:
-        email_recipients = "denisranderson@gmail.com"
+        envia_email(prepara_msg(url_monitorada, mensagem))
 
-        msg = EmailMessage()
-        msg['Subject'] = f'Sem resposta: {url_monitorada}'
-        msg['From'] = 'Monitor de URL'
-        msg['To'] = email_recipients
-        msg.set_content(mensagem)
-
-        # prepara_msg()
-        envia_email(msg)
     else:
         logger.info(mensagem)
 
 
-if __name__== "__main__":
+if __name__ == "__main__":
     logger = configura_logger()
     main()
