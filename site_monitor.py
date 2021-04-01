@@ -11,12 +11,28 @@
 
 import smtplib
 import sys
+import logging
 from datetime import datetime
 from email.message import EmailMessage
 from time import sleep
 
 import decouple
 import requests
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+log_formatter = logging.Formatter('%(asctime)s,%(levelname)s,%(message)s')
+
+log_file_handler = logging.FileHandler('site_monitor.log')
+log_file_handler.setFormatter(log_formatter)
+
+log_stream_handler = logging.StreamHandler()
+log_stream_handler.setFormatter(log_formatter)
+
+logger.addHandler(log_file_handler)
+#logger.addHandler(log_stream_handler)
 
 
 def get_data_hora():
@@ -31,55 +47,55 @@ def envia_email(msg_contents):
         EMAIL_PASSWORD = decouple.config('EMAIL_PASSWD')
 
     except decouple.UndefinedValueError as value_ex:
-        print(f'{get_data_hora()}, {value_ex}')  # log
+        logger.critical(f'{value_ex}') 
         sys.exit(1)
 
     except Exception as ex:
-        print(f'{get_data_hora()}, {repr(ex)}')  # log
+        logger.critical(f'{repr(ex)}')
         raise
 
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
         server.send_message(msg_contents)
-        print(f'{get_data_hora()}, email enviado')  # log
+        logger.info(f'email enviado')
 
 
 def verifica_status_url(url, tentativas=5):
     TEMPO_SLEEP = 2
     mensagem = ''
-    sem_resposta_ok = False
+    sem_resposta = False
 
     for _ in range(0, tentativas):
         try:
             requisicao = requests.get(url, timeout=5)
 
         except requests.exceptions.ConnectionError as conn_ex:
-            mensagem = f'{get_data_hora()}, {conn_ex}'
-            print(mensagem)  # log
+            logger.critical(f'{conn_ex}')
             sys.exit(1)
 
         else:
             if requisicao.status_code != 200:
-                sem_resposta_ok = True
+                sem_resposta = True
                 mensagem = mensagem + \
                     f'{get_data_hora()}, {url}, {requisicao.status_code}, {requests.status_codes._codes[requisicao.status_code][0]}\n'
+                logger.error(f'{url},{requisicao.status_code},{requests.status_codes._codes[requisicao.status_code][0]}')
                 sleep(TEMPO_SLEEP)
 
             else:
-                sem_resposta_ok = False
-                mensagem = f'{get_data_hora()}, {url}, {requisicao.status_code}, {requests.status_codes._codes[requisicao.status_code][0]}'
+                sem_resposta = False
+                mensagem = f'{url},{requisicao.status_code},{requests.status_codes._codes[requisicao.status_code][0]}'
                 break
 
-    return sem_resposta_ok, mensagem
+    return sem_resposta, mensagem
 
 
 def prepara_msg():
     pass
 
 
-url_monitorada = 'https://www.uol1.com.br'
+url_monitorada = 'https://www.uol.com.br'
 
-url_monitorada_fora, mensagem_verificacao = verifica_status_url(url_monitorada)
+url_monitorada_fora, mensagem = verifica_status_url(url_monitorada)
 
 if url_monitorada_fora:
     email_recipients = "denisranderson@gmail.com"
@@ -88,9 +104,9 @@ if url_monitorada_fora:
     msg['Subject'] = f'Sem resposta: {url_monitorada}'
     msg['From'] = 'Monitor de URL'
     msg['To'] = email_recipients
-    msg.set_content(mensagem_verificacao)
+    msg.set_content(mensagem)
 
     # prepara_msg()
     envia_email(msg)
 else:
-    print(mensagem_verificacao)  # log
+    logger.info(mensagem)
