@@ -39,15 +39,12 @@ def envia_email(msg_contents):
         # Tenta obter credenciais a partir de arquivo .env
         EMAIL_ADDRESS = decouple.config('EMAIL_ADDR')
         EMAIL_PASSWORD = decouple.config('EMAIL_PASSWD')
-
     except decouple.UndefinedValueError as value_ex:
         logger.critical(f'{value_ex}')
         sys.exit(1)
-
     except Exception as ex:
-        logger.critical(f'{repr(ex)}')
+        logger.exception(f'{repr(ex)}')
         raise
-
     with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
         # TODO: Tratar exceções na rotina de envio de email #1
         server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
@@ -57,19 +54,19 @@ def envia_email(msg_contents):
 
 def verifica_status_url(url, tentativas=5):
     TEMPO_SLEEP = 3
-    mensagem = ''
     sem_resposta = False
+    mensagem = ''
 
     for _ in range(0, tentativas):
         try:
             requisicao = requests.get(url, timeout=5)
-
-        except Exception as conn_ex:
-#        except requests.exceptions.ConnectionError as conn_ex:
+        except requests.exceptions.ConnectionError as conn_ex:
             # TODO: Enviar e-mail com o trace da exceção #2
             logger.critical(f'{conn_ex}')
             sys.exit(1)
-
+        except Exception as ex:
+            logger.exception(f'{repr(ex)}')
+            sys.exit(1)
         else:
             if requisicao.status_code != 200:
                 sem_resposta = True
@@ -78,7 +75,6 @@ def verifica_status_url(url, tentativas=5):
                 logger.error(
                     f'{url},{requisicao.status_code},{requests.status_codes._codes[requisicao.status_code][0]}')
                 sleep(TEMPO_SLEEP)
-
             else:
                 sem_resposta = False
                 mensagem = f'{url},{requisicao.status_code},{requests.status_codes._codes[requisicao.status_code][0]}'
@@ -109,7 +105,6 @@ def main():
 
     if url_monitorada_fora:
         envia_email(prepara_msg(url_monitorada, mensagem))
-
     else:
         logger.info(mensagem)
 
