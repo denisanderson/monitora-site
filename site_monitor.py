@@ -1,11 +1,5 @@
 #!/usr/bin/env python
 
-# TODO: Obtem lista de URL de arquivo
-# TODO: Obtem lista de destinatários do email de arquivo
-# TODO: Obtem nome dos arquivos de URL e destinários do email na linha de comando
-# TODO: Envia email com o trace da exceção nas falhas
-# TODO: Inclui bloco Try/Except na rotina de envio de email
-
 import logging
 import smtplib
 import sys
@@ -51,11 +45,11 @@ def envia_email(msg_contents):
     except Exception as ex:
         logger.exception(f'{repr(ex)}')
         raise
-    else:
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-            server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-            server.send_message(msg_contents)
-            logger.info(f'email enviado')
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        # TODO: Tratar exceções na rotina de envio de email #1
+        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        server.send_message(msg_contents)
+        logger.info(f'email enviado')
 
 
 def verifica_status_url(url, tentativas=5):
@@ -67,6 +61,7 @@ def verifica_status_url(url, tentativas=5):
         try:
             requisicao = requests.get(url, timeout=5)
         except requests.exceptions.ConnectionError as conn_ex:
+            # TODO: Enviar e-mail com o trace da exceção #2
             logger.critical(f'{conn_ex}')
             sys.exit(1)
         except Exception as ex:
@@ -89,6 +84,7 @@ def verifica_status_url(url, tentativas=5):
 
 
 def prepara_msg(url, corpo_email):
+    # TODO: Obter lista de destinatários do e-mail de um arquivo #3
     email_recipients = "denisranderson@gmail.com"
 
     msg = EmailMessage()
@@ -101,7 +97,9 @@ def prepara_msg(url, corpo_email):
 
 
 def main():
-    url_monitorada = 'https://www.uol1.com.br'
+    # TODO: Obter nome dos arquivos de URL e e-mails na linha de comando #4
+    # TODO: Obter URL a monitorar de arquivo #5
+    url_monitorada = 'https://www.uol.com.br'
 
     url_monitorada_fora, mensagem = verifica_status_url(url_monitorada)
 
