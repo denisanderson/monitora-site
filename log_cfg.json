@@ -1,0 +1,48 @@
+{
+    "version": 1,
+    "disable_existing_loggers": true,
+    "formatters": {
+        "simples": {
+            "format": "%(asctime)s:%(levelname)s:%(message)s",
+            "datefmt": "%d/%m/%Y:%H:%M:%S"
+        },
+        "complexo": {
+            "format": "%(asctime)s:%(levelname)s:%(module)s-linha_%(lineno)d:%(message)s",
+            "datefmt": "%d/%m/%Y:%H:%M:%S"
+        }
+    },
+    "handlers": {
+        "screen": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "simples",
+            "stream": "ext://sys.stdout"
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "maxBytes": 10240,
+            "backupCount": 3,
+            "level": "DEBUG",
+            "formatter": "complexo",
+            "filename": "site_monitor.log",
+            "mode": "a",
+            "encoding": "utf-8"
+        }
+    },
+    "loggers": {
+        "__name__": {
+            "handlers": [
+                "screen",
+                "file"
+            ],
+            "level": "NOTSET"
+        }
+    },
+    "root": {
+        "handlers": [
+            "screen",
+            "file"
+        ],
+        "level": "NOTSET"
+    }
+}
