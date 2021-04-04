@@ -40,14 +40,30 @@ def envia_email(msg_contents):
         # Tenta obter credenciais a partir de arquivo .env
         EMAIL_ADDRESS = decouple.config('EMAIL_ADDR')
         EMAIL_PASSWORD = decouple.config('EMAIL_PASSWD')
+    except decouple.UndefinedValueError as value_error:
+        logger.critical(f'Falha em recuperar valor da variável. {value_error}')
+        sys.exit(1)
     except Exception as ex:
         logger.critical(f'{repr(ex)}')
         sys.exit(1)
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
-        # TODO: Tratar exceções na rotina de envio de email #1
-        server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-        server.send_message(msg_contents)
-        logger.info(f'email enviado')
+    else:
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            try:
+                server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+                server.send_message(msg_contents)
+            except smtplib.SMTPAuthenticationError as auth_error:
+                logger.critical(f'Problema na autenticação. {auth_error}')
+                sys.exit(1)
+            except AttributeError as attr_error:
+                logger.critical(
+                    f'Problema na preparação da mensagem. {attr_error}')
+                sys.exit(1)
+            except Exception as ex:
+                logger.critical(repr(ex))
+                sys.exit(1)
+            else:
+                logger.info(f'Notificação da falha enviada por email')
 
 
 def verifica_status_url(url, tentativas=5):
@@ -58,14 +74,18 @@ def verifica_status_url(url, tentativas=5):
     for _ in range(0, tentativas):
         try:
             requisicao = requests.get(url, timeout=5)
+        except requests.ConnectionError as ex:
+            logger.critical(f'Falha de conexão. Verifique URL. {ex}')
+            sys.exit(1)
         except Exception as ex:
             # TODO: Enviar e-mail com o trace da exceção #2
             logger.critical(f'{repr(ex)}')
             sys.exit(1)
         else:
+
             if requisicao.status_code != 200:
                 sem_resposta = True
-                mensagem = mensagem + '{}:{}:{}'.format(
+                mensagem = mensagem + '{}:{}:{}\n'.format(
                     url, requisicao.status_code, requests.status_codes._codes[requisicao.status_code][0].upper())
                 logger.error(
                     '{}:{}:{}'.format(
@@ -80,12 +100,12 @@ def verifica_status_url(url, tentativas=5):
     return sem_resposta, mensagem
 
 
-def prepara_msg(url, corpo_email):
+def prepara_msg(corpo_email):
     # TODO: Obter lista de destinatários do e-mail de um arquivo #3
     email_recipients = "denisranderson@gmail.com"
 
     msg = EmailMessage()
-    msg['Subject'] = f'URL sem resposta: {url}'
+    msg['Subject'] = f'Algo falhou'
     msg['From'] = 'Monitoramento URL'
     msg['To'] = email_recipients
     msg.set_content(corpo_email)
@@ -96,12 +116,12 @@ def prepara_msg(url, corpo_email):
 def main():
     # TODO: Obter nome dos arquivos de URL e e-mails na linha de comando #4
     # TODO: Obter URL a monitorar de arquivo #5
-    url_monitorada = 'https://www.uol.com.br'
+    url_monitorada = 'https://www.camara.leg.br'
 
     url_monitorada_fora, mensagem = verifica_status_url(url_monitorada)
 
     if url_monitorada_fora:
-        envia_email(prepara_msg(url_monitorada, mensagem))
+        envia_email(prepara_msg(mensagem))
     else:
         logger.info(mensagem)
 
