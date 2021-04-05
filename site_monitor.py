@@ -82,7 +82,7 @@ def verifica_status_url(url, tentativas=5):
     sem_resposta = False
     mensagem = ''
 
-    for _ in range(0, tentativas):
+    for _ in range(tentativas):
         try:
             requisicao = requests.get(url, timeout=5)
 
@@ -142,47 +142,62 @@ def prepara_msg(corpo_email):
     return msg
 
 
-def main():
+def main(app_config_file):
     # TODO: Obter nome dos arquivos de URL e e-mails na linha de comando #4
     # TODO: Obter URL a monitorar de arquivo #5
-    url_monitorada = 'https://www.uol.com.br'
 
-    # Chama função que verifica se URL está respondendo ou não
-    # Armazena o resultado da verificação em
-    # Armazena o texto com detalhes sobre o resultado em
-    url_monitorada_fora, mensagem = verifica_status_url(url_monitorada, 2)
+    try:
+        # Tenta carregar configurações de URL para monitorar
+        with open(app_config_file) as json_cfg_file:
+            app_config = json.load(json_cfg_file)
 
-    if url_monitorada_fora:
-        envia_email(prepara_msg(mensagem))
+    except Exception as ex:
+        # Grava erro no log e aborta o programa
+        logger.critical(f'{repr(ex)}')
+        sys.exit(1)
 
     else:
-        logger.info(mensagem)
+        url_monitorada = app_config['sites'][0]['url']
+        tentativas = app_config['sites'][0]['tentativas']
+
+        # Chama função que verifica se URL está respondendo ou não
+        # Armazena o resultado da verificação em <url_monitorada_fora>
+        # Armazena o texto com detalhes sobre o resultado em <mensagem>
+        url_monitorada_fora, mensagem = verifica_status_url(
+            url_monitorada, tentativas)
+
+        if url_monitorada_fora:
+            envia_email(prepara_msg(mensagem))
+        else:
+            logger.info(mensagem)
 
 
 if __name__ == "__main__":
     # Marca o início da execução do programa
     tempo_inicio_execucao = time.perf_counter()
 
-    # Nome do arquivo de configuração do logger
+    # Nome dos arquivos de configuração
     logger_config_file = 'log_cfg.json'
+    app_config_file = 'app_cfg.json'
 
-    # Verifica se o arquivo de configuração do logger existe
-    if os.path.isfile(logger_config_file):
+    # Verifica se os arquivos de configuração estão no mesmo dir do sript
+    if os.path.isfile(logger_config_file) & os.path.isfile(app_config_file):
         # Configura o Logger
         logger = configura_logger(logger_config_file)
         # Chama a função principal
-        main()
+        # Passa o nome do arquivo de configuração do programa
+        main(app_config_file)
 
     else:
         # TODO: Executar o programa sem logar, se não encontrar o arquivo de configuração
         # Notifica o usuário que não foi possível configurar o Logger
         # Aborta o programa
         print(
-            '[!] Arquivo de configuração do Logger não encontrado. Abortando execução.')
+            '[!] Arquivo de configuração não encontrado. Abortando execução.')
 
     # Marca o fim da execucação do programa
     tempo_fim_execucao = time.perf_counter()
 
     # Registra em log o tempo total de execucação
     logger.info(
-        f'[-] Programa rodou em {(tempo_fim_execucao - tempo_inicio_execucao):.2f} segundos')
+        f'[i] Programa rodou em {(tempo_fim_execucao - tempo_inicio_execucao):.2f} segundos')

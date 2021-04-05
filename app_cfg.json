@@ -1,0 +1,13 @@
+{
+    "sites": [
+        {
+            "url": "https://www.uol.com.br",
+            "tentativas": 2
+        }
+    ],
+    "destinatarios": [
+        {
+            "email": "denisranderson@gmail.com"
+        }
+    ]
+}
