@@ -38,6 +38,7 @@ def get_data_hora():
 
 
 def envia_email(msg_contents):
+
     try:
         # Tenta obter credenciais a partir de arquivo .env
         EMAIL_ADDRESS = decouple.config('EMAIL_ADDR')
@@ -45,13 +46,14 @@ def envia_email(msg_contents):
 
     except decouple.UndefinedValueError as ex:
         # Registra a falha e termina o programa
-        logger.error(f'Falha em recuperar valor da variável. {ex}')
+        logger.error(f'Falha em recuperar valor da variável de ambiente. {ex}')
         sys.exit(1)
 
     except Exception as ex:
         # Registra a falha e termina o programa
         logger.error(f'{repr(ex)}')
         sys.exit(1)
+
     else:
 
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
@@ -125,26 +127,36 @@ def verifica_status_url(url, tentativas=5):
 
 
 def prepara_msg(corpo_email):
-    # TODO: Obter lista de destinatários do e-mail de um arquivo #3
-    email_recipients = "denisranderson@gmail.com"
 
-    # Cria objeto
-    msg = EmailMessage()
+    try:
+        # Tenta carregar o endereço de email do destinatario
+        with open(app_config_file) as json_cfg_file:
+            app_config = json.load(json_cfg_file)
 
-    # Prepara o cabeçalho da mensagem
-    msg['Subject'] = f'Algo falhou'
-    msg['From'] = 'Monitoramento URL'
-    msg['To'] = email_recipients
+    except Exception as ex:
+        # Grava erro no log e aborta o programa
+        logger.critical(f'{repr(ex)}')
+        sys.exit(1)
 
-    # Inclui texto no corpo do email
-    msg.set_content(corpo_email)
+    else:
+        # Carrega valor das variaveis a partir do arquivo de configuração json
+        email_recipients = app_config['destinatarios'][0]['email']
 
-    return msg
+        # Cria objeto
+        msg = EmailMessage()
+
+        # Prepara o cabeçalho da mensagem
+        msg['Subject'] = f'Algo falhou'
+        msg['From'] = 'Monitoramento URL'
+        msg['To'] = email_recipients
+
+        # Inclui texto no corpo do email
+        msg.set_content(corpo_email)
+
+        return msg
 
 
 def main(app_config_file):
-    # TODO: Obter nome dos arquivos de URL e e-mails na linha de comando #4
-    # TODO: Obter URL a monitorar de arquivo #5
 
     try:
         # Tenta carregar configurações de URL para monitorar
@@ -157,6 +169,7 @@ def main(app_config_file):
         sys.exit(1)
 
     else:
+        # Carrega valor das variaveis a partir do arquivo de configuração json
         url_monitorada = app_config['sites'][0]['url']
         tentativas = app_config['sites'][0]['tentativas']
 
