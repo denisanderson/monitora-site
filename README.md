@@ -31,28 +31,44 @@ pip install <nome_do_modulo>
 ## Usando o URL Monitor
 
 Antes de utilizar o URL Monitor, configure os seguintes parâmetros:
+
 1. Editar o arquivo **app_cfg.json** e alterar as seguintes chaves com a URL do site a monitorar, bem como o número de tentativas consecutivas antes de enviar o e-mail reportando a falha:
-    "sites": [{
+```
+    "sites": [
+    	{
             "url": "https://www.site.com.br",
             "tentativas": 5
         }]
+```
 2. No mesmo arquivo, alterar o email do admin que receberá a notificação da falha:
-    "destinatarios": [{
+```
+    "destinatarios": [
+    	{
             "email": "email@email.com"
         }]
+```
 3. Salvar e fechar o arquivo
+
 4. Editar o arquivo **log_cfg.json**. Alterar o o tamanho máximo (em bytes), a quantidade de arquivos de log a manter antes de iniciar a rotação e o nome para o arquivo de log:
+```
 "file": {
             "maxBytes": 10240,
             "backupCount": 5,
-			"filename": "<nome_do_arquivo_de_log.log>",
+	    "filename": "<nome_do_arquivo_de_log.log>",
         }
-
+```
 Ao ser criado um novo arquivo de log, após atingir o tamanho máximo definido, será acrescido suffixo com a sequencia até o número definido em **backupCount**, ex.: logfile.log.1, logfile.log.2...logfile.log.5
 
 O arquivo de log será criado no mesmo diretório do arquivo json. Para mudar de local, deve incluir o caminho completo no campo **filename**.
 
-5. Para utilizar o URL Monitor, execute:
+5. Criar arquivo **.env** no mesmo diretório do script e preencher as credenciais para login no Gmail, da seguinte forma:
+```
+EMAIL_ADDR=<email_gmail>
+EMAIL_PASSWD=<senha>
+```
+> NOTA: Para evitar registrar sua senha pessoal no arquivo, é possível criar uma [senha de app](https://support.google.com/accounts/answer/185833?hl=pt-BR) no Google.
+
+6. Para utilizar o URL Monitor, execute:
 ```
 python site_monitor.py
 ```
@@ -61,7 +77,7 @@ Se o executável do python não estiver no *path*, considere incluir o caminho d
 "c:\program files\python37\python.exe" site_monitor.py
 ```
 
-> O script não possui rotina de autoexecução programada, então é necessário incluir a linha de comando na rotina de algum agendadador de tarefas do seu sistema, como o **crontab** (no Linux) ou **Task Scheduler** (no Windows 10), e definir o intervalo de execução como preferir.
+> NOTA: O script não possui rotina de autoexecução programada, então é necessário incluir a linha de comando na rotina de algum agendadador de tarefas do seu sistema, como o **crontab** (no Linux) ou **Task Scheduler** (no Windows 10), e definir o intervalo de execução como preferir.
 
 ## Contribuições
 
